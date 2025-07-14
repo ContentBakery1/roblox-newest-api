@@ -15,7 +15,8 @@ async function fetchLatestUser() {
     } catch (_) {}
   }
 }
-setInterval(fetchLatestUser, 5 * 60 * 1000); // update elke 5 min
+
+setInterval(fetchLatestUser, 1000); // update elke 1 seconde
 fetchLatestUser();
 
 app.get('/newest', (req, res) => {
