@@ -3,26 +3,26 @@ const axios = require('axios');
 const app = express();
 
 let latestUser = { username: "Loading...", id: 0 };
-let lastCheckedId = 0;  // Hoogste userId die je al hebt
+let lastCheckedId = 0;
 
-// Deze functie checkt één ID hoger dan laatst bekend
 async function fetchLatestUser() {
-  const currentId = lastCheckedId + 1;
   try {
-    const res = await axios.get(`https://users.roproxy.com/v1/users/${currentId}`);
+    const res = await axios.get(`https://users.roproxy.com/v1/users/${lastCheckedId + 1}`);
     if (res.data && res.data.name && !res.data.isBanned) {
-      latestUser = { username: res.data.name, id: currentId };
-      lastCheckedId = currentId;
-      console.log(`Nieuwste user gevonden: ${res.data.name} (${currentId})`);
+      latestUser = { username: res.data.name, id: lastCheckedId + 1 };
+      lastCheckedId++;
+      console.log(`Nieuwste user gevonden: ${res.data.name} (${lastCheckedId})`);
     } else {
-      // User niet gevonden of banned, niks doen
+      console.log(`User ${lastCheckedId + 1} is niet actief of geblokkeerd.`);
+      lastCheckedId++;
     }
   } catch (error) {
-    // Vaak 404 bij niet-bestaande userId, gewoon negeren
+    console.log(`Fout bij het ophalen van gebruiker met ID ${lastCheckedId + 1}: ${error.message}`);
+    lastCheckedId++;
   }
 }
 
-setInterval(fetchLatestUser, 1000); // Elke seconde checken
+setInterval(fetchLatestUser, 1000);
 fetchLatestUser();
 
 app.get('/newest', (req, res) => {
