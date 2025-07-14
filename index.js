@@ -4,25 +4,28 @@ const app = express();
 
 let latestUser = { username: "Loading...", id: 0 };
 
-// Cache de laatst gevonden userId om niet steeds vanaf 4 miljard te zoeken
-let lastCheckedId = 4000000000;
+// Begin bij 0 of hoogste opgeslagen userId
+let lastCheckedId = 0;
+
+// Interval in milliseconden
+const checkInterval = 1000;
 
 async function fetchLatestUser() {
-  for (let id = lastCheckedId; id > 1; id--) {
-    try {
-      const res = await axios.get(`https://users.roproxy.com/v1/users/${id}`);
-      if (res.data && res.data.name && !res.data.isBanned) {
-        latestUser = { username: res.data.name, id: id };
-        lastCheckedId = id - 1; // ga volgende keer iets lager zoeken
-        break;
-      }
-    } catch (_) {
-      // fout negeren en doorgaan
+  const currentId = lastCheckedId + 1;
+  try {
+    const res = await axios.get(`https://users.roproxy.com/v1/users/${currentId}`);
+    if (res.data && res.data.name && !res.data.isBanned) {
+      latestUser = { username: res.data.name, id: currentId };
+      lastCheckedId = currentId;
+      console.log(`Newest user updated: ${res.data.name} (${currentId})`);
     }
+    // Als geen gebruiker gevonden of banned, gewoon wachten op volgende check
+  } catch (error) {
+    // Meestal een 404 bij niet-bestaande userId, gewoon negeren
   }
 }
 
-setInterval(fetchLatestUser, 1000); // update elke seconde
+setInterval(fetchLatestUser, checkInterval);
 fetchLatestUser();
 
 app.get('/newest', (req, res) => {
