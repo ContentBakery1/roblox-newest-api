@@ -1,77 +1,48 @@
-const express = require('express');
-const axios = require('axios');
+import express from 'express';
+import fetch from 'node-fetch';
+
 const app = express();
+let maxId = 0;
+let latest = { userId: 0, username: "" };
 
-let latestUser = { username: "Loading...", id: 0 };
-const RATE_LIMIT_WAIT = 60_000; // 60 s back‑off bij 429
-
-async function userExists(id) {
-  try {
-    const res = await axios.get(`https://users.roproxy.com/v1/users/${id}`);
-    return res.data?.name && !res.data.isBanned;
-  } catch (err) {
-    if (err.response?.status === 429) {
-      throw new Error('RATE_LIMIT');
-    }
-    return false;
+async function fetchUser(id) {
+  const res = await fetch(`https://users.roblox.com/v1/users/${id}`);
+  if (res.status === 200) return res.json();
+  if (res.status === 429) {
+    const retry = res.headers.get('retry-after');
+    await new Promise(r => setTimeout(r, (retry ? +retry : 5) * 1000));
+    return fetchUser(id); // retry
   }
+  return null;
 }
 
-async function findUpperBound() {
-  let x = 1e8;
+async function findLatest() {
+  let lo = maxId, hi = lo + 100_000; // beperk range voor snelheid
+  // vind bovenste hi dat bestaat
   while (true) {
-    try {
-      if (await userExists(x)) return x;
-      x *= 2;
-    } catch (e) {
-      if (e.message === 'RATE_LIMIT') throw e;
-      x *= 2;
-    }
-    if (x > 1e11) return x;
+    const u = await fetchUser(hi);
+    if (u) break;
+    hi = lo + Math.floor((hi - lo) / 2);
   }
+  // dubbel zoeken tussen lo en hi
+  while (hi - lo > 1) {
+    const mid = Math.floor((lo + hi) / 2);
+    const u = await fetchUser(mid);
+    if (u) lo = mid; else hi = mid;
+  }
+  const u = await fetchUser(lo);
+  if (!u) return;
+  maxId = lo;
+  latest = { userId: lo, username: u.name };
 }
 
-async function binaryMaxId(lo, hi) {
-  while (lo < hi) {
-    const mid = Math.ceil((lo + hi) / 2);
-    try {
-      if (await userExists(mid)) lo = mid;
-      else hi = mid - 1;
-    } catch (e) {
-      if (e.message === 'RATE_LIMIT') throw e;
-      hi = mid - 1;
-    }
-  }
-  return lo;
+async function poll() {
+  try { await findLatest(); }
+  catch (e) { console.error('Error:', e); }
+  setTimeout(poll, 5000);
 }
+poll();
 
-async function updateLatestUser() {
-  try {
-    const ub = await findUpperBound();
-    const maxId = await binaryMaxId(Math.floor(ub / 2), ub);
-    if (maxId < latestUser.id) {
-      console.log(`🔄 Gefilterd: gevonden ID (${maxId}) < huidig (${latestUser.id}), gebruik huidig.`);
-      return;
-    }
-    const res = await axios.get(`https://users.roproxy.com/v1/users/${maxId}`);
-    latestUser = { username: res.data.name, id: maxId };
-    console.log(`✅ Nieuwste gebruiker: ${res.data.name} (${maxId})`);
-  } catch (e) {
-    if (e.message === 'RATE_LIMIT') {
-      console.warn(`⚠️ Rate‑limit, volgende update over ${RATE_LIMIT_WAIT/1000}s`);
-      await new Promise(r => setTimeout(r, RATE_LIMIT_WAIT));
-    } else {
-      console.error('🔴 Fout bij update:', e.message);
-    }
-  }
-}
+app.get('/latest.json', (req, res) => res.json(latest));
 
-(async () => {
-  await updateLatestUser();
-  setInterval(updateLatestUser, 5000);
-})();
-
-app.get('/newest', (req, res) => res.json(latestUser));
-app.get('/', (req, res) => res.send("✅ Roblox Newest Account API running"));
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Server draait op poort ${port}`));
+app.listen(3000, () => console.log('Luisterend op poort 3000'));
