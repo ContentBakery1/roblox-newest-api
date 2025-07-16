@@ -10,7 +10,9 @@ async function fetchUser(id) {
   if (res.status === 200) return res.json();
   if (res.status === 429) {
     const retry = res.headers.get('retry-after');
-    await new Promise(r => setTimeout(r, (retry ? +retry : 5) * 1000));
+    const waitTime = (retry ? +retry : 5) * 1000;
+    console.log(`Rate limited, wacht ${waitTime / 1000} seconden...`);
+    await new Promise(r => setTimeout(r, waitTime));
     return fetchUser(id);
   }
   return null;
@@ -24,6 +26,7 @@ async function findLatest() {
     const u = await fetchUser(hi);
     if (u) break;
     hi = lo + Math.floor((hi - lo) / 2);
+    if (hi <= lo) break;
   }
 
   while (hi - lo > 1) {
@@ -33,7 +36,7 @@ async function findLatest() {
   }
 
   const u = await fetchUser(lo);
-  if (u) {
+  if (u && lo > latest.userId) {
     maxId = lo;
     latest = { userId: lo, username: u.name };
     console.log("Nieuwste account:", latest);
@@ -41,13 +44,17 @@ async function findLatest() {
 }
 
 async function poll() {
-  try {
-    await findLatest();
-  } catch (e) {
-    console.error("Error:", e);
+  while (true) {
+    try {
+      await findLatest();
+    } catch (e) {
+      console.error("Error:", e);
+      // Wacht even om niet te crashen
+      await new Promise(r => setTimeout(r, 3000));
+    }
   }
-  setTimeout(poll, 5000); // elke 5 seconden
 }
+
 poll();
 
 app.get('/latest.json', (req, res) => res.json(latest));
