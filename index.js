@@ -1,8 +1,12 @@
 import express from 'express';
-import fetch, { AbortController } from 'node-fetch';
+import fetch from 'node-fetch';
+import { AbortController } from 'abort-controller'; // extra dependency installeren met: npm i abort-controller
+
+// OF als je Node.js 18+ gebruikt kun je deze import weglaten en gewoon:
+// const { AbortController } = globalThis;
 
 const app = express();
-let maxId = 8935590000;
+let maxId = 8935591000;
 let latest = { userId: 0, username: "" };
 
 async function fetchUser(id) {
