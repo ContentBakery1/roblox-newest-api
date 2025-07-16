@@ -2,16 +2,14 @@ import express from 'express';
 import fetch from 'node-fetch';
 
 const app = express();
-let latest = { userId: 8935807100, username: "" };
+let latest = { userId: 8935680100, username: "" };
 
-// Fetch user met retry en delay bij fouten (zoals ECONNRESET of 429)
 async function fetchUser(id, retries = 3) {
   try {
     const res = await fetch(`https://users.roblox.com/v1/users/${id}`);
 
     if (res.status === 200) return await res.json();
 
-    // 429 = Too Many Requests
     if (res.status === 429) {
       const retryAfter = res.headers.get('retry-after');
       const waitTime = (retryAfter ? +retryAfter : 5) * 1000;
@@ -66,7 +64,7 @@ async function poll() {
     } catch (e) {
       console.error("Error tijdens zoeken:", e.message || e);
     }
-    await new Promise(resolve => setTimeout(resolve, 500)); // Delay tussen cycli
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 seconde delay
   }
 }
 
@@ -74,5 +72,5 @@ app.get('/latest.json', (req, res) => res.json(latest));
 
 app.listen(3000, () => {
   console.log('Luistert op poort 3000');
-  poll(); // Start meteen
+  poll(); // Start direct met zoeken
 });
