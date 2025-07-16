@@ -2,7 +2,7 @@ import express from 'express';
 import fetch from 'node-fetch';
 
 const app = express();
-let maxId = 8935427500;
+let maxId = 8935498500;
 let latest = { userId: 0, username: "" };
 
 async function fetchUser(id) {
