@@ -23,7 +23,7 @@ async function fetchUser(id, retries = 3) {
   } catch (err) {
     if (retries > 0) {
       console.warn(`Fout bij ID ${id}: ${err.message}, probeer opnieuw...`);
-      await new Promise(r => setTimeout(r, 2000)); // 2 seconden pauze
+      await new Promise(r => setTimeout(r, 500)); // 2 seconden pauze
       return fetchUser(id, retries - 1);
     } else {
       console.error(`Gefaalde fetch na retries (${id}): ${err.message}`);
@@ -64,7 +64,7 @@ async function poll() {
     } catch (e) {
       console.error("Error tijdens zoeken:", e.message || e);
     }
-    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 seconde delay
+    await new Promise(resolve => setTimeout(resolve, 500)); // 1 seconde delay
   }
 }
 
