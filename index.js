@@ -11,13 +11,14 @@ async function fetchUser(id) {
 }
 
 async function findLatest() {
-  let lo = 8935498500;
+  let lo = 8935680100;
   let hi = lo + 100000;
 
   while (true) {
     const u = await fetchUser(hi);
     if (u) break;
     hi = lo + Math.floor((hi - lo) / 2);
+    if (hi <= lo) break;
   }
 
   while (hi - lo > 1) {
@@ -33,9 +34,20 @@ async function findLatest() {
   }
 }
 
+async function poll() {
+  while (true) {
+    try {
+      await findLatest();
+    } catch (e) {
+      console.error("Error tijdens zoeken:", e);
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 seconde wachten
+  }
+}
+
 app.get('/latest.json', (req, res) => res.json(latest));
 
 app.listen(3000, () => {
   console.log('Luistert op poort 3000');
-  findLatest(); // Initialiseer bij opstarten
+  poll(); // Start continue polling
 });
