@@ -1,21 +1,38 @@
 import express from 'express';
-import fetch from 'node-fetch';
+import fetch, { AbortController } from 'node-fetch';
 
 const app = express();
-let maxId = 8935498500;
+let maxId = 8935590000;
 let latest = { userId: 0, username: "" };
 
 async function fetchUser(id) {
-  const res = await fetch(`https://users.roblox.com/v1/users/${id}`);
-  if (res.status === 200) return res.json();
-  if (res.status === 429) {
-    const retry = res.headers.get('retry-after');
-    const waitTime = (retry ? +retry : 5) * 1000;
-    console.log(`Rate limited, wacht ${waitTime / 1000} seconden...`);
-    await new Promise(r => setTimeout(r, waitTime));
-    return fetchUser(id);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 1000); // 1 seconde timeout
+
+  try {
+    const res = await fetch(`https://users.roblox.com/v1/users/${id}`, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (res.status === 200) return res.json();
+
+    if (res.status === 429) {
+      const retry = res.headers.get('retry-after');
+      const waitTime = (retry ? +retry : 5) * 1000;
+      console.log(`Rate limited, wacht ${waitTime / 1000} seconden...`);
+      await new Promise(r => setTimeout(r, waitTime));
+      return fetchUser(id);
+    }
+
+    return null;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      console.warn(`Request timed out for user ${id}`);
+      return null; // timeout netjes afhandelen
+    }
+    throw err; // andere errors doorgeven
   }
-  return null;
 }
 
 async function findLatest() {
@@ -49,8 +66,7 @@ async function poll() {
       await findLatest();
     } catch (e) {
       console.error("Error:", e);
-      // Wacht even om niet te crashen
-      await new Promise(r => setTimeout(r, 3000));
+      await new Promise(r => setTimeout(r, 3000)); // kleine pauze om crashes te voorkomen
     }
   }
 }
