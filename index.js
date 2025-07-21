@@ -4,7 +4,7 @@ import fetch from 'node-fetch';
 const app = express();
 const PORT = 3000;
 
-let latest = { userId: 8977913200, username: "" };
+let latest = { userId: 8978080700, username: "" };
 const API_BASE = 'https://users.roproxy.com/v1/users';
 
 async function fetchUser(id, retries = 3) {
@@ -39,27 +39,29 @@ async function fetchUser(id, retries = 3) {
 async function poll() {
   while (true) {
     let currentId = latest.userId;
-    let foundNew = false;
+    let lastFound = null;
 
     for (let i = 1; i <= 1000; i++) {
       const tryId = currentId + i;
       const user = await fetchUser(tryId);
 
       if (user) {
-        latest = { userId: tryId, username: user.name };
-        console.log(`✅ Nieuwste gebruiker gevonden: ${user.name} (${tryId})`);
-        foundNew = true;
-        await new Promise(r => setTimeout(r, 100)); // 10ms tussen requests
+        lastFound = { userId: tryId, username: user.name };
+        console.log(`✅ Mogelijke nieuwe gebruiker: ${user.name} (${tryId})`);
+        await new Promise(r => setTimeout(r, 100)); // kleine pauze tussen requests
       } else {
-        break; // Stop als ID niet bestaat
+        break; // zodra we een gat vinden, stoppen we met zoeken
       }
     }
 
-    if (!foundNew) {
+    if (lastFound) {
+      latest = lastFound;
+      console.log(`🎉 Nieuwste gebruiker geüpdatet: ${lastFound.username} (${lastFound.userId})`);
+    } else {
       console.log(`⏸️ Geen nieuwe gebruikers tussen ${currentId + 1} en ${currentId + 1000}`);
     }
 
-    await new Promise(r => setTimeout(r, 5000)); // korte pauze voor volgende ronde
+    await new Promise(r => setTimeout(r, 5000));
   }
 }
 
