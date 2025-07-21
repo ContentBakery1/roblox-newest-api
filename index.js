@@ -4,7 +4,7 @@ import fetch from 'node-fetch';
 const app = express();
 const PORT = 3000;
 
-let latest = { userId: 8977837670, username: "" };
+let latest = { userId: 8977913200, username: "" };
 const API_BASE = 'https://users.roproxy.com/v1/users';
 
 async function fetchUser(id, retries = 3) {
@@ -49,7 +49,7 @@ async function poll() {
         latest = { userId: tryId, username: user.name };
         console.log(`✅ Nieuwste gebruiker gevonden: ${user.name} (${tryId})`);
         foundNew = true;
-        await new Promise(r => setTimeout(r, 10)); // 10ms tussen requests
+        await new Promise(r => setTimeout(r, 100)); // 10ms tussen requests
       } else {
         break; // Stop als ID niet bestaat
       }
